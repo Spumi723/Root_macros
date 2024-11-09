@@ -6,7 +6,7 @@
 #include <vector>
 #include <TCanvas.h>
 
-
+// ZIOPERAAAA
 
 int riseTime(vector<unsigned short> wf){ // Calculate the rise time of a signal 
     float dTh = 5;
