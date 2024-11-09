@@ -5,8 +5,9 @@
 #include <iostream>
 #include <vector>
 #include <TCanvas.h>
+#include <TMath.h>
+#include <TString.h>
 
-// ZIOPERAAAA
 
 int riseTime(vector<unsigned short> wf){ // Calculate the rise time of a signal 
     float dTh = 5;
@@ -49,7 +50,7 @@ int energy(vector<unsigned short> wf){ // Integrate the signal to
     return -sum;
 }
 
-vector<float> cfd(vector<unsigned short> wf, int D, float F){
+vector<float> cfd(vector<unsigned short> wf, int D, float F){ // DIgital CFD function
 
     vector<float> nwf;
 
@@ -83,7 +84,7 @@ float zcpFind(vector<float> wf0){ // digital TAC, from 2 cfd signals calculate t
 
 void digital_CFD(bool Opt) {
     // Open the file containing the TTree
-    TFile *file = TFile::Open("DataR_G29_light_waves_RIGHT_1.root", "READ");
+    TFile *file = TFile::Open("/home/valo/Desktop/G29_light_waves_RIGHT_1/RAW/DataR_G29_light_waves_RIGHT_1.root", "READ");
     if (!file || file->IsZombie()) {
         std::cerr << "Error opening file." << std::endl;
         return;
@@ -206,7 +207,7 @@ void digital_CFD(bool Opt) {
     wf_ch0->SetLineColor(kRed);  // Set the line color of the histogram to red
     wf_ch1->SetLineColor(kBlue); // Set the fill color of the histogram to blue
 
-    TFile* oFile = new TFile("Histograms.root", "RECREATE");
+    TFile* oFile = new TFile("/home/valo/Desktop/Histograms.root", "RECREATE");
 
     spec0->Write();
     spec1->Write();
@@ -220,10 +221,10 @@ void digital_CFD(bool Opt) {
 
     if(Opt){
         // Search for the optimal values of the digital CFD:
-        int Dmin = 3;
-        int Dmax = 10;
-        float Fmin = 0.05;
-        float Fmax = 0.7;
+        int Dmin = 4;
+        int Dmax = 7;
+        float Fmin = 0.1;
+        float Fmax = 0.4;
         float dF = 0.05;
 
         vector<vector<float>> sig(Dmax-Dmin, vector<float> ((int)((Fmax-Fmin)/dF), 0.));
@@ -240,6 +241,11 @@ void digital_CFD(bool Opt) {
         for(int i=0;i<Dmax-Dmin;i++){
             for(int j=0;j<(int)((Fmax-Fmin)/dF);j++){
                 dTa->Reset();
+                TString histName = TString::Format("histogram_%d", i);
+                TString histTitle = TString::Format("Histogram %d", i);
+
+                // Create the histogram
+                TH1F *hist = new TH1F(histName, histTitle, 100, 0, 10);
                 for(int k=0;k<tree->GetEntries()/4;k++){
                     float t0,t1;
                     t0 = zcpFind(cfd(wf0[k],Dmin + i,Fmin + j*dF));
@@ -262,9 +268,9 @@ void digital_CFD(bool Opt) {
 
         for (int row = 0; row < Dmax-Dmin; ++row) {
             for (int col = 0; col < (int)((Fmax-Fmin)/dF); ++col) {
-                sHm->SetBinContent(col + 1, row + 1, sig[row][col]);
-                sdHm->SetBinContent(col + 1, row + 1, stdev[row][col]);
-                qHm->SetBinContent(col + 1, row + 1, qval[row][col]);
+                sHm->SetBinContent(col + 1, row + 1, TMath::Log(sig[row][col]));
+                sdHm->SetBinContent(col + 1, row + 1, TMath::Log(stdev[row][col]));
+                qHm->SetBinContent(col + 1, row + 1, TMath::Log(qval[row][col]));
             }
         }
         sHm->Write();
