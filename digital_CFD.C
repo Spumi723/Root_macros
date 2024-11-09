@@ -7,6 +7,7 @@
 #include <TCanvas.h>
 #include <TMath.h>
 #include <TString.h>
+#include <TDirectory.h>
 
 
 int riseTime(vector<unsigned short> wf){ // Calculate the rise time of a signal 
@@ -50,7 +51,7 @@ int energy(vector<unsigned short> wf){ // Integrate the signal to
     return -sum;
 }
 
-vector<float> cfd(vector<unsigned short> wf, int D, float F){ // DIgital CFD function
+vector<float> cfd(vector<unsigned short> wf, int D, float F){ // Digital CFD function
 
     vector<float> nwf;
 
@@ -66,7 +67,7 @@ vector<float> cfd(vector<unsigned short> wf, int D, float F){ // DIgital CFD fun
     return nwf;
 }
 
-float zcpFind(vector<float> wf0){ // digital TAC, from 2 cfd signals calculate the delta time
+float zcpFind(vector<float> wf0){ // Zero Crossing Point finder
     
     float T0;
     int th = 20;
@@ -221,11 +222,11 @@ void digital_CFD(bool Opt) {
 
     if(Opt){
         // Search for the optimal values of the digital CFD:
-        int Dmin = 4;
-        int Dmax = 7;
+        int Dmin = 3;
+        int Dmax = 4;
         float Fmin = 0.1;
-        float Fmax = 0.4;
-        float dF = 0.05;
+        float Fmax = 0.14;
+        float dF = 0.02;
 
         vector<vector<float>> sig(Dmax-Dmin, vector<float> ((int)((Fmax-Fmin)/dF), 0.));
         vector<vector<float>> stdev(Dmax-Dmin, vector<float> ((int)((Fmax-Fmin)/dF), 0.));
@@ -235,34 +236,39 @@ void digital_CFD(bool Opt) {
         TH2D* sdHm = new TH2D("sdHm", "Standard deviation heatmap", (int)((Fmax-Fmin)/dF), Fmin, Fmax, Dmax-Dmin, Dmin, Dmax);
         TH2D* qHm = new TH2D("qHm", "Quality heatmap", (int)((Fmax-Fmin)/dF), Fmin, Fmax, Dmax-Dmin, Dmin, Dmax);
 
-        TH1F *dTa = new TH1F("dTa","Delta times", 200, 8, 18);
         TCanvas* ctemp = new TCanvas("ctemp", "2D Heatmap", 800, 600);
+
+        TDirectory *subDir = oFile->mkdir("Times_histograms");
+
+        // Navigate to the subdirectory
+        subDir->cd();
 
         for(int i=0;i<Dmax-Dmin;i++){
             for(int j=0;j<(int)((Fmax-Fmin)/dF);j++){
-                dTa->Reset();
-                TString histName = TString::Format("histogram_%d", i);
-                TString histTitle = TString::Format("Histogram %d", i);
+                //dTa->Reset();
+                TString histName = TString::Format("D_%d_F_%d", Dmin + i, (int)( 100*(Fmin + j*dF)));
+                TString histTitle = TString::Format("Histogram D = %d, F = %d", Dmin + i, (int)(100*(Fmin + j*dF)));
 
                 // Create the histogram
-                TH1F *hist = new TH1F(histName, histTitle, 100, 0, 10);
+                TH1F *hist = new TH1F(histName, histTitle, 200, 10, 16);
                 for(int k=0;k<tree->GetEntries()/4;k++){
                     float t0,t1;
                     t0 = zcpFind(cfd(wf0[k],Dmin + i,Fmin + j*dF));
                     t1 = zcpFind(cfd(wf1[k],Dmin + i,Fmin + j*dF));
 
-                    dTa->Fill(t0-t1);
+                    hist->Fill(t0-t1);
                 }
 
-                TF1 *gausFit = new TF1("gausFit", "gaus", 8, 18); // Adjust the fit range as needed
-                dTa->Fit(gausFit, "Q");
+                TF1 *gausFit = new TF1("gausFit", "gaus", 10, 16); // Adjust the fit range as needed
+                hist->Fit(gausFit, "Q");
                 sig[i][j] = gausFit->GetParameter(2);
-                stdev[i][j] = dTa->GetStdDev();
+                stdev[i][j] = hist->GetStdDev();
                 qval[i][j] = gausFit->GetChisquare() / gausFit->GetNDF();
                 std::cout << "D = " << Dmin + i << "; F = " << Fmin + j*dF << "; sig = " << sig[i][j] << "; stdev = " << stdev[i][j] << "; q = " << qval[i][j] << '\n';
-                dTa->Draw();
+                hist->Draw();
                 gausFit->Draw("SAME");
                 ctemp->Update();
+                hist->Write();
             }
         }
 
@@ -273,8 +279,10 @@ void digital_CFD(bool Opt) {
                 qHm->SetBinContent(col + 1, row + 1, TMath::Log(qval[row][col]));
             }
         }
+        oFile->cd();
         sHm->Write();
         sdHm->Write();
         qHm->Write();
+        oFile->Close();
     }
 }
