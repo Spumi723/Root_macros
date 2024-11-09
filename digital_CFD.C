@@ -219,14 +219,15 @@ void digital_CFD(bool Opt) {
     dTimes->Write();
     wf_ch0->Write();
     wf_ch1->Write();
+    wf_ch0_cfd->Write();
 
     if(Opt){
         // Search for the optimal values of the digital CFD:
         int Dmin = 3;
-        int Dmax = 4;
-        float Fmin = 0.1;
-        float Fmax = 0.14;
-        float dF = 0.02;
+        int Dmax = 11;
+        float Fmin = 0.04;
+        float Fmax = 0.5;
+        float dF = 0.01;
 
         vector<vector<float>> sig(Dmax-Dmin, vector<float> ((int)((Fmax-Fmin)/dF), 0.));
         vector<vector<float>> stdev(Dmax-Dmin, vector<float> ((int)((Fmax-Fmin)/dF), 0.));
@@ -245,9 +246,9 @@ void digital_CFD(bool Opt) {
 
         for(int i=0;i<Dmax-Dmin;i++){
             for(int j=0;j<(int)((Fmax-Fmin)/dF);j++){
-                //dTa->Reset();
-                TString histName = TString::Format("D_%d_F_%d", Dmin + i, (int)( 100*(Fmin + j*dF)));
-                TString histTitle = TString::Format("Histogram D = %d, F = %d", Dmin + i, (int)(100*(Fmin + j*dF)));
+
+                TString histName = TString::Format("H_%d_%d", i,j);
+                TString histTitle = TString::Format("Histogram D = %d, F = %f, ", Dmin + i, Fmin + j*dF);
 
                 // Create the histogram
                 TH1F *hist = new TH1F(histName, histTitle, 200, 10, 16);
@@ -283,6 +284,6 @@ void digital_CFD(bool Opt) {
         sHm->Write();
         sdHm->Write();
         qHm->Write();
-        oFile->Close();
     }
+    oFile->Close();
 }
