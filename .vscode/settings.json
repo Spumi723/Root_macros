@@ -1,7 +1,10 @@
 {
     "files.associations": {
         "digital_CFD.C": "cpp",
-        "vector": "cpp"
+        "vector": "cpp",
+        "Gaussian_Fit.C": "cpp",
+        "hist2d.C": "cpp",
+        "LinearRegression.C": "cpp"
     },
     "C_Cpp.errorSquiggles": "disabled"
 }
