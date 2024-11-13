@@ -11,7 +11,7 @@
 
 
 int riseTime(vector<unsigned short> wf){ // Calculate the rise time of a signal 
-    float dTh = 5;
+    float dTh = 2;
     float rt;
     float d[(int)(wf.size())];
 
@@ -152,10 +152,12 @@ void digital_CFD(bool Opt) {
     TH1F *pkHt0 = new TH1F("PH_ch0","Peack heights CH0", 50, 0, 1000);
     TH1F *pkHt1 = new TH1F("PH_ch1","Peack heights CH1", 50, 0, 1000);
     TH1F *dTimes = new TH1F("dT","Delta times", 200, 8, 18);
+    TH2F* rTE0 = new TH2F("RT_E_ch0", "Energy - Rising time", 250, 0, 25000, 10, 0.5, 10.5);
+    TH2F* dTE = new TH2F("dT_E", "Delta time - Energy", 200, 8, 18, 250, 0, 25000);
 
     // Set the digital CFD parameters
 
-    int D = 6;
+    int D = 5;
     float F = 0.2;
 
     for(int i=0;i<tree->GetEntries()/4;i++){
@@ -164,6 +166,7 @@ void digital_CFD(bool Opt) {
         spec0->Fill(energy(wf0[i]));
         rTime0->Fill(riseTime(wf0[i]));
         pkHt0->Fill(peakHeight(wf0[i]));
+        rTE0->Fill(energy(wf0[i]),riseTime(wf0[i]));
         t0 = zcpFind(cfd(wf0[i],D,F));
 
         spec1->Fill(energy(wf1[i]));
@@ -172,6 +175,7 @@ void digital_CFD(bool Opt) {
         t1 = zcpFind(cfd(wf1[i],D,F));
 
         dTimes->Fill(t0-t1);
+        dTE->Fill(t0-t1,energy(wf0[i]));
 
         if(i%100==0){
             std::cout << "\rBuilding histograms: " << 100*i/(tree->GetEntries()/4) <<"%";
@@ -220,13 +224,15 @@ void digital_CFD(bool Opt) {
     wf_ch0->Write();
     wf_ch1->Write();
     wf_ch0_cfd->Write();
+    rTE0->Write();
+    dTE->Write();
 
     if(Opt){
         // Search for the optimal values of the digital CFD:
-        int Dmin = 3;
-        int Dmax = 11;
-        float Fmin = 0.04;
-        float Fmax = 0.5;
+        int Dmin = 2;
+        int Dmax = 9;
+        float Fmin = 0.05;
+        float Fmax = 0.6;
         float dF = 0.01;
 
         vector<vector<float>> sig(Dmax-Dmin, vector<float> ((int)((Fmax-Fmin)/dF), 0.));
@@ -247,7 +253,7 @@ void digital_CFD(bool Opt) {
         for(int i=0;i<Dmax-Dmin;i++){
             for(int j=0;j<(int)((Fmax-Fmin)/dF);j++){
 
-                TString histName = TString::Format("H_%d_%d", i,j);
+                TString histName = TString::Format("Hs_%d_%d", i,j);
                 TString histTitle = TString::Format("Histogram D = %d, F = %f, ", Dmin + i, Fmin + j*dF);
 
                 // Create the histogram
@@ -260,7 +266,7 @@ void digital_CFD(bool Opt) {
                     hist->Fill(t0-t1);
                 }
 
-                TF1 *gausFit = new TF1("gausFit", "gaus", 10, 16); // Adjust the fit range as needed
+                TF1 *gausFit = new TF1("gausFit", "gaus", hist->GetMean() - 1.2*hist->GetStdDev(), hist->GetMean() + 1.2*hist->GetStdDev()); // Fit araound the mean with a set range
                 hist->Fit(gausFit, "Q");
                 sig[i][j] = gausFit->GetParameter(2);
                 stdev[i][j] = hist->GetStdDev();

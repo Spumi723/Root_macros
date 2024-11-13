@@ -1,6 +1,7 @@
 {
     "files.associations": {
-        "digital_CFD.C": "cpp"
+        "digital_CFD.C": "cpp",
+        "vector": "cpp"
     },
     "C_Cpp.errorSquiggles": "disabled"
 }
